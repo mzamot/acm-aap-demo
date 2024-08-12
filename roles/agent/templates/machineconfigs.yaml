@@ -1,0 +1,11 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True 
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: custom-manifests
+  namespace: "{{ clusterName.split('.', 1)[0] }}"  
+data:
+  {% for machineconfig in lookup('fileglob', playbook_dir + '/files/manifests/*', wantlist=True) if 'cluster-scheduler-02-config.yml' not in machineconfig %}
+  {{ machineconfig | basename }}: |
+    {{ lookup('template', machineconfig) | from_yaml | to_nice_yaml | indent(4, first=false)  }}
+  {% endfor %}

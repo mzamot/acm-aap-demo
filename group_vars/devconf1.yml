@@ -1,0 +1,45 @@
+---
+vault_base_path: kv/data/path/to/secrets
+vault_addr: 'https://vault.tmpa3gppnetwork.org:8200'
+upstreamDNS:
+  - <DNS IP 1>
+  - <DNS IP 2>
+registry: <Image Registry> 
+clusterName: devconf1.tmpa3gppnetwork.org
+ntpServers:
+  - <NTP IP> 
+acm_clusterName: <ACM clusterName e.g. myacm> # Used to locate ACM kubeconfig secret
+acm_import: 'true'
+kubevirt_kubeconfig_vault_path: 'secret=kv/data/path/to/secret/openshift:kubeconfig'
+kubevirt_sriov_resource_names: # These NMState NetworkAttachDefinition should already exist in the Kubevirt cluster
+  - ens3f0np0vms
+  - ens3f1np1vms
+kubevirt_cluster: <Name of Kubevirt cluster e.g. kubevirt.tmpa3gppnetwork.org>
+machineNetwork:
+  - <machineNetwork subnet, routable> 
+clusterNetwork:
+  - cidr: 192.168.0.0/16
+    hostPrefix: '23'
+serviceNetwork:
+  - 198.223.0.0/16
+ingressVIP: <Ingress IP>
+apiVIP: <API IP>
+sshKey: >-
+  <Your public super secret SSH key to connect to nodes>
+pullSecret:
+  auths:
+    <Image Registry>: 
+      auth: <base64 credentials> 
+      email: <your@email.com>
+    quay.io:
+      auth: >-
+        ...
+      email: <your@email.com>
+    registry.connect.redhat.com:
+      auth: >-
+        ...
+      email: <your@email.com> 
+    registry.redhat.io:
+      auth: >-
+        ...
+      email: <your@email.com>

@@ -1,0 +1,15 @@
+---
+- hosts: "*_bastion"
+  gather_facts: false
+  vars:
+    agent_deploy: true
+  tasks:
+  - name: get hubkubeconfig
+    ansible.builtin.copy:
+      content: "{{ lookup('community.hashi_vault.hashi_vault', '{{ acm_hub_kubeconfig_vault_path }} token_validate=false')}}"
+      dest: hubkubeconfig
+    tags: always
+
+  - name: Deploy cluster using virtual masters and the agent service
+    import_role:
+      name: agent

@@ -1,0 +1,11 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True 
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: {{ clusterName.split('.', 1)[0] }}-{{ my_idx }}
+  namespace: {{ clusterName.split('.', 1)[0] }} 
+  annotations:
+    k8s.v1.cni.cncf.io/resourceName: openshift.io/{{ resname }}
+spec:
+  config: '{ "cniVersion":"0.3.1", "name":"net-baremetal","type":"sriov","vlan":0,"spoofchk":"off","trust":"on","vlanQoS":0,"capabilities":{ "mac": true },"ipam":{} }'

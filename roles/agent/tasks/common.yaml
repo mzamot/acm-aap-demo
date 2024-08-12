@@ -1,0 +1,22 @@
+---
+- name: get ACM Hub kubeconfig
+  ansible.builtin.copy:
+    content: "{{ lookup('community.hashi_vault.hashi_vault', '{{ acm_hub_kubeconfig_vault_path }} token_validate=false')}}"
+    dest: hubkubeconfig
+  tags: always
+
+- name: get kubevirt cluster kubeconfig
+  ansible.builtin.copy:
+    content: "{{ lookup('community.hashi_vault.hashi_vault', '{{ kubevirt_kubeconfig_vault_path }} token_validate=false')}}"
+    dest: kubevirtkubeconfig
+  tags: always
+
+- name: Create namespace in Hub cluster
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '00_namespace.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create namespace in kubevirt cluster
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '00_namespace.yaml') }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"

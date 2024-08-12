@@ -1,0 +1,4 @@
+---
+hub_kubeconfig: hubkubeconfig
+kubevirt_kubeconfig: kubevirtkubeconfig
+

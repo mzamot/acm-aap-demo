@@ -1,0 +1,82 @@
+apiVersion: nmstate.io/v1
+kind: NodeNetworkConfigurationPolicy
+metadata:
+  name: {{ clusterName.split('.', 1)[0] }} 
+spec:
+  desiredState:
+    interfaces:
+    - name: {{ vm_network.baremetal_port }}
+      description: Baremetal VLAN for {{ clusterName.split('.', 1)[0] }}
+      type: vlan
+      state: up
+      mtu: 9000
+      ipv4:
+        enabled: false 
+      ipv6:
+        enabled: false 
+      vlan:
+        base-iface: {{ vm_network.baremetal_port.split('.')[0] }}
+        id: {{ vm_network.baremetal_port.split('.')[1] }}
+    - name: {{ vm_network.storage_port }}
+      description: Storage VLAN for {{ clusterName.split('.', 1)[0] }}
+      type: vlan
+      state: up
+      mtu: 9000
+      ipv4:
+        enabled: false
+      ipv6:
+        enabled: false
+      vlan:
+        base-iface: {{ vm_network.storage_port.split('.')[0] }}
+        id: {{ vm_network.storage_port.split('.')[1] }}
+    - name: {{ vm_network.icni_port }}
+      description: ICNI VLAN for {{ clusterName.split('.', 1)[0] }}
+      type: vlan
+      state: up
+      mtu: 9000
+      ipv4:
+        enabled: false
+      ipv6:
+        enabled: false
+      vlan:
+        base-iface: {{ vm_network.icni_port.split('.')[0] }}
+        id: {{ vm_network.icni_port.split('.')[1] }}
+    - name: b.{{ clusterName.split('.', 1)[0] }}
+      description: Baremetal for {{ clusterName.split('.', 1)[0] }}
+      type: linux-bridge
+      state: up
+      ipv4:
+        dhcp: false
+        enabled: false 
+      bridge:
+        options:
+          stp:
+            enabled: false
+        port:
+        - name: {{ vm_network.baremetal_port }}
+    - name: s.{{ clusterName.split('.', 1)[0] }}
+      description: Storage for {{ clusterName.split('.', 1)[0] }}
+      type: linux-bridge
+      state: up
+      ipv4:
+        dhcp: false
+        enabled: false
+      bridge:
+        options:
+          stp:
+            enabled: false
+        port:
+        - name: {{ vm_network.storage_port }}
+    - name: i.{{ clusterName.split('.', 1)[0] }}
+      description: ICNI for {{ clusterName.split('.', 1)[0] }}
+      type: linux-bridge
+      state: up
+      ipv4:
+        dhcp: false
+        enabled: false
+      bridge:
+        options:
+          stp:
+            enabled: false
+        port:
+        - name: {{ vm_network.icni_port }} 

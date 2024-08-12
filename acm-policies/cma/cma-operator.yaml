@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-keda
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    olm.providedAPIs: ClusterTriggerAuthentication.v1alpha1.keda.sh,KedaController.v1alpha1.keda.sh,ScaledJob.v1alpha1.keda.sh,ScaledObject.v1alpha1.keda.sh,TriggerAuthentication.v1alpha1.keda.sh
+  generateName: openshift-keda-
+  namespace: openshift-keda
+spec:
+  upgradeStrategy: Default
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/openshift-custom-metrics-autoscaler-operator.openshift-keda: ""
+  name: openshift-custom-metrics-autoscaler-operator
+  namespace: openshift-keda
+spec:
+  channel: "stable"
+  installPlanApproval: Automatic
+  name: openshift-custom-metrics-autoscaler-operator
+  source: operator-marketplace
+  sourceNamespace: openshift-marketplace
+  startingCSV:  "custom-metrics-autoscaler.v2.8.2-174"
+---
+apiVersion: keda.sh/v1alpha1
+kind: KedaController
+metadata:
+  name: keda
+  namespace: openshift-keda
+spec:
+  metricsServer:
+    logLevel: "0"
+  operator:
+    logEncoder: console
+    logLevel: info
+  serviceAccount: {}
+  watchNamespace: ""

@@ -1,0 +1,28 @@
+---
+- name: Create BMH secret 
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'bmh-secret.yaml.j2') }}"
+    state: present
+    apply: yes
+    kubeconfig: "{{ hub_kubeconfig | default(omit) }}"
+  loop: "{{ nodes_to_add | default(groups[shortClusterName + '_workers']) }}"
+  loop_control:
+    loop_var: bmh
+  register: bmh_secret_status
+  until: bmh_secret_status is not failed
+  retries: 60
+  delay: 10
+
+- name: Create BMH resource 
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'bmh.yaml.j2') }}"
+    state: present
+    apply: yes
+    kubeconfig: "{{ hub_kubeconfig | default(omit) }}"
+  loop: "{{ nodes_to_add | default(groups[shortClusterName + '_workers']) }}"
+  loop_control:
+    loop_var: bmh
+  register: bmh_creation_status
+  until: bmh_creation_status is not failed
+  retries: 60
+  delay: 10

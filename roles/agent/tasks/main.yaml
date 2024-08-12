@@ -1,0 +1,17 @@
+---
+- name: Create common resources in kubevirt cluster and hub cluster
+  import_tasks: common.yaml
+  tags: agent_common
+
+- name: Create virtualization resources on kubevirt cluster
+  import_tasks: hypervisor.yaml
+  tags: agent_hypervisor
+
+- name: Create resources in ACM Hub Cluster and start deployment
+  import_tasks: deploy.yaml
+  tags: agent_deploy 
+
+- name: Add worker nodes
+  import_tasks: add_nodes.yaml
+  tags: add_nodes
+

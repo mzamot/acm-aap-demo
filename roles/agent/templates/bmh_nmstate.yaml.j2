@@ -1,0 +1,98 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+{% set node_bonds = hostvars[node].networkConfig.bonding | default([]) %}
+{% set node_vlans = hostvars[node].networkConfig.vlans | default([]) %}
+{% set extra_routes = hostvars[node].networkConfig.routes | default([]) %}
+---
+interfaces:
+{% for bond in node_bonds | default([]) %}
+- name: {{ bond.name }}
+  type: bond
+  state: up
+  ipv4:
+    dhcp: {{ bond.dhcpv4 }}
+    enabled: {{ 'true' if bond.address is defined or bond.dhcpv4|bool == 'true' else 'false' }}
+    auto-dns: {{ 'true' if bond.dhcpv4|bool == 'true' else 'false' }}
+    {% if bond.address is defined %}
+    address:
+    - ip: {{ bond.address | ansible.utils.ipaddr('address') }}
+      prefix-length: {{ bond.address | ansible.utils.ipaddr('prefix') }}
+    {% endif %}
+  ipv6:
+    dhcp: {{ bond.dhcpv6 }}
+    enabled: {{ 'true' if bond.addressv6 is defined or bond.dhcpv6|bool == 'true' else 'false' }}
+    {% if bond.addressv6 is defined %}
+    address:
+    - ip: {{ bond.addressv6 | ansible.utils.ipv6('address') }}
+      prefix-length: {{ bond.addressv6 | ansible.utils.ipv6('prefix') }}
+    {% endif %}
+  mtu: {{ bond.mtu }}
+  link-aggregation:
+    mode: {{ bond.options.mode }}
+    options:
+    {% for option, value in bond.options.items() if option != 'mode' %}
+      {{ option }}: {{ value }}
+    {% endfor %}
+    port:
+    {% for interface in bond.interfaces %}
+    - {{ interface.name if interface.name is defined else interface }}
+    {% endfor %}
+{% endfor %}
+{% for vlan in node_vlans | default([])  %}
+- name: {{ vlan.name }}
+  type: vlan
+  state: up
+  mtu: {{ vlan.mtu }}
+  ipv4:
+    dhcp: {{ vlan.dhcpv4 }}
+    enabled: {{ 'true' if vlan.address is defined or vlan.dhcpv4|bool == 'true' else 'false' }}
+    auto-gateway: false
+    auto-dns: false
+    {% if vlan.address is defined %}
+    address:
+    - ip: {{ vlan.address | ansible.utils.ipaddr('address') }}
+      prefix-length: {{ vlan.address | ansible.utils.ipaddr('prefix') }}
+    {% endif %}
+  ipv6:
+    dhcp: {{ vlan.dhcpv6 }}
+    enabled: {{ 'true' if vlan.addressv6 is defined or vlan.dhcpv6|bool == 'true' else 'false' }}
+    auto-dns: false
+    {% if vlan.addressv6 is defined %}
+    address:
+    - ip: {{ vlan.addressv6 | ansible.utils.ipv6('address') }}
+      prefix-length: {{ vlan.addressv6 | ansible.utils.ipv6('prefix') }}
+    {% endif %}
+  vlan:
+    base-iface: {{ vlan.parent }}
+    id: {{ vlan.id }}
+{% endfor %}
+{% if (node_bonds | selectattr('gateway', 'defined') | list) or (node_bonds | selectattr('gatewayv6', 'defined') | list) or extra_routes is defined %}
+routes:
+{% endif %}
+  config:
+  {% for bond in node_bonds %}
+  {% if bond.gateway is defined %}
+  - destination: 0.0.0.0/0
+    next-hop-address: {{ bond.gateway }}
+    next-hop-interface: {{ bond.name }}
+  {% endif %}
+  {% if bond.gatewayv6 is defined %}
+  - destination: ::/0
+    next-hop-address: {{ bond.gatewayv6 }}
+    next-hop-interface: {{ bond.name }}
+  {% endif %}
+  {% endfor %}
+  {% for gw in extra_routes %}
+  - destination: {{ gw.destination }}
+    next-hop-address: {{ gw.gateway }}
+    next-hop-interface: {{ gw.interface }}
+  {% endfor %}
+{% if upstreamDNS is defined %}
+dns-resolver:
+  config:
+    search:
+    - {{ clusterName }}
+    server:
+      {% for dns in upstreamDNS %}
+    - {{ dns }}
+      {% endfor %}
+{% endif %}

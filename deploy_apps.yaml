@@ -1,0 +1,42 @@
+---
+- hosts: "{{ target_clusters | join('_bastion ') }}_bastion"
+  gather_facts: false
+  vars:
+    deploy_post: "true"
+  tasks:
+  - name: get hubkubeconfig
+    ansible.builtin.copy:
+      content: "{{ lookup('community.hashi_vault.hashi_vault', '{{ acm_hub_kubeconfig_vault_path }} token_validate=false')}}"
+      dest: hubkubeconfig
+    tags: always
+
+  - name: Get kubeconfig if exist
+    ansible.builtin.copy:
+      content: "{{ lookup('community.hashi_vault.hashi_vault', '{{ kubeconfig_vault_path }} token_validate=false', errors='ignore') | default('') }}"
+      dest: "{{ shortClusterName }}-kubeconfig"
+    tags: always
+    when: vault_addr is defined
+
+  - set_fact:
+      kubeconfig: "{{ clusterName.split('.', 1)[0] }}-kubeconfig"
+    tags: always
+
+  - name: Add label to ManagedCluster
+    kubernetes.core.k8s:
+      definition: "{{ lookup('template', playbook_dir + '/roles/agent/templates/04_managedcluster.yaml') }}"
+      kubeconfig: "{{ hub_kubeconfig }}"
+    vars:
+      deploy_post: "true"
+
+  - name: Merge local resources
+    kubernetes.core.k8s:
+      definition: "{{ lookup('file', item)}}"
+      kubeconfig: "{{ kubeconfig }}"
+    loop: "{{ lookup('fileglob', 'files/resources/*.yaml', wantlist=True) }}"
+
+  - name: Remove label from ManagedCluster
+    kubernetes.core.k8s:
+      definition: "{{ lookup('template', playbook_dir + '/roles/agent/templates/04_managedcluster.yaml') }}"
+      kubeconfig: "{{ hub_kubeconfig }}"
+    vars:
+      deploy_post: "false"

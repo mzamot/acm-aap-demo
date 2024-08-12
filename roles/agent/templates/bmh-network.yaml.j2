@@ -1,0 +1,9 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True 
+apiVersion: v1
+data:
+  nmstate: {{ lookup('template', playbook_dir + "/files/templates/bmh_nmstate.yaml.j2") | b64encode }} 
+kind: Secret
+metadata:
+  name: {{ node }}-network-config-secret
+  namespace: openshift-machine-api
+type: Opaque

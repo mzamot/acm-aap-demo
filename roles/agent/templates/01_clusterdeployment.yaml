@@ -1,0 +1,24 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True 
+---
+apiVersion: hive.openshift.io/v1
+kind: ClusterDeployment
+metadata:
+  labels:
+    "cluster.open-cluster-management.io/clusterset": 'default'
+  name: {{ clusterName.split('.', 1)[0] }} 
+  namespace: {{ clusterName.split('.', 1)[0] }}
+spec:
+  baseDomain: {{ clusterName.split('.', 1)[1] }}
+  clusterInstallRef:
+    group: extensions.hive.openshift.io
+    kind: AgentClusterInstall
+    name: {{ clusterName.split('.', 1)[0] }}
+    version: v1beta1
+  clusterName: {{ clusterName.split('.', 1)[0] }}
+  platform:
+    agentBareMetal:
+      agentSelector:
+        matchLabels:
+          'agentBareMetal-generated-infraenv-ai-flow': '{{ clusterName.split(".", 1)[0] }}-{{ clusterName.split(".", 1)[0] }}'
+  pullSecretRef:
+    name: pullsecret-cluster-{{ clusterName.split('.', 1)[0] }}

@@ -1,0 +1,49 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True 
+---
+apiVersion: extensions.hive.openshift.io/v1beta1
+kind: AgentClusterInstall
+metadata:
+  name: {{ clusterName.split('.', 1)[0] }} 
+  namespace: {{ clusterName.split('.', 1)[0] }}
+spec:
+  sshPublicKey: '{{ sshKey }}'
+  {% if apiVIP is defined %}
+  apiVIP: {{ apiVIP }}
+  {% elif apiVIPs is defined and apiVIPs | length == 2 %}
+  apiVIP: {{ apiVIPs | ansible.utils.ipv4('address') | first }}
+  apiVIPs:
+    - {{ apiVIPs | ansible.utils.ipv4('address') | first }}
+    - {{ apiVIPs | ansible.utils.ipv6('address') | first }}
+  {% endif %}
+  {% if ingressVIP is defined %}
+  ingressVIP: {{ ingressVIP }}
+  {% elif ingressVIPs is defined and ingressVIPs | length == 2 %}
+  ingressVIP: {{ ingressVIPs | ansible.utils.ipv4('address') | first }}
+  ingressVIPs:
+  - {{ ingressVIPs | ansible.utils.ipv4('address') | first }}
+  - {{ ingressVIPs | ansible.utils.ipv6('address') | first }}
+  {% endif %}
+  clusterDeploymentRef:
+    name: {{ clusterName.split('.', 1)[0] }} 
+  holdInstallation: false 
+  provisionRequirements:
+    workerAgents: 0
+    controlPlaneAgents: 3
+  imageSetRef:
+    name: 'openshift-v{{ openshiftVersion }}-disconnected'
+  manifestsConfigMapRefs:
+  - name: custom-manifests
+  networking:
+    clusterNetwork:
+    {% for cn in clusterNetwork %}
+    - cidr: {{ cn.cidr }}
+      hostPrefix: {{ cn.hostPrefix }}
+    {% endfor %}
+    serviceNetwork:
+    {% for sn in serviceNetwork %}
+    - {{ sn }}
+    {% endfor %}
+    machineNetwork:
+    {% for cidr in machineNetwork %}
+    - cidr: {{ cidr }}
+    {% endfor %}

@@ -1,0 +1,30 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: {{ bmh }}
+  namespace: {{ shortClusterName }}
+  annotations:
+    bmac.agent-install.openshift.io/hostname: {{ bmh }}
+    bmac.agent-install.openshift.io/role: {{ hostvars[bmh].role }}
+    inspect.metal3.io: disabled
+  labels:
+    infraenvs.agent-install.openshift.io: "{{ shortClusterName }}"
+spec:
+  automatedCleaningMode: disabled
+  bmc:
+    address: {{ hostvars[bmh].bmc_address }}
+    credentialsName: {{ bmh }}-bmc-secret
+    disableCertificateVerification: true
+  bootMACAddress: {{ hostvars[bmh].mac }}
+  bootMode: {{ hostvars[bmh].bootMode | default("UEFI") }}
+  hardwareProfile: unknown
+  online: true
+  rootDeviceHints:
+  {% if hostvars[bmh].rootDeviceHints is defined %}
+    {{ hostvars[bmh].rootDeviceHints | to_yaml }}
+  {% elif hostvars[bmh].virtual|default(False)|bool %}
+    deviceName: /dev/vda
+  {% else %}
+    minSizeGigabytes: 400
+  {% endif %}

@@ -1,0 +1,19 @@
+---
+role: master
+virtual: true
+networkConfig: 
+  bonding:
+  - name: bond1
+    interfaces:
+    - name: enp6s0
+    - name: enp7s0
+    mtu: 9000
+    dhcpv4: false
+    options:
+      mode: balance-rr
+      fail_over_mac: active
+    dhcpv6: false
+    address: "10.0.0.7/25"
+    gateway: "10.0.0.1"
+
+

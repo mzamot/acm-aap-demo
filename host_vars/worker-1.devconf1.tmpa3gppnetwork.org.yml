@@ -1,0 +1,49 @@
+---
+role: worker # valid worker or master
+bmc_address: idrac-virtualmedia://<IP to iDRAC>/redfish/v1/Systems/System.Embedded.1 # If using HPE, use this RedFish path instead redfish-virtualmedia://10.75.102.36/redfish/v1/Systems/1/
+bmc_password: "{{ lookup('hashi_vault', 'secret=kv/data/path/to/secret/common/ironic:bmc_password') }}"
+bmc_username: "{{ lookup('hashi_vault', 'secret=kv/data/path/to/secret/common/ironic:bmc_username') }}"
+mac: '<A valid MAC from the node>'
+networkConfig:
+  bonding:
+  - name: bond0
+    interfaces:
+    - name: eno1np0
+      mac: "<mac address 1>"
+    - name: eno2np1
+      mac: "<mac address 2>"
+    mtu: 9000
+    dhcpv4: false
+    options:
+      mode: 802.3ad
+      miimon: 100
+    dhcpv6: false
+  - name: bond1
+    interfaces:
+    - name: ens3f0np0
+      mac: "<mac address 1>"
+    - name: ens3f1np1
+      mac: "<mac address 2>"
+    mtu: 9000
+    dhcpv4: false
+    options:
+      mode: 802.3ad
+      miimon: 100
+    dhcpv6: false
+    address: <node ip with prefix e.g. 10.0.0.10/27>
+    gateway: <gateway>
+  vlans:
+  - name: bond0.<vlan>
+    parent: bond0
+    id: <vlan id>
+    mtu: 9000
+    dhcpv4: false
+    dhcpv6: false
+    address: <vlan address e.g. 10.1.0.10/25> 
+  - name: bond1.<vlan>
+    parent: bond1
+    id: <vlan id>
+    mtu: 9000
+    dhcpv4: false
+    dhcpv6: false
+    address: <vlan address e.g. 10.2.0.10/25>

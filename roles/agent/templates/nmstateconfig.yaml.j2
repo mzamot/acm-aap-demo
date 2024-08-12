@@ -1,0 +1,21 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+{% set node_bonds = hostvars[node].networkConfig.bonding %}
+{% set node_vlans = hostvars[node].networkConfig.vlans %}
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: {{ hostvars[node].inventory_hostname }} 
+  namespace: {{ shortClusterName }}
+  labels:
+    cluster-name: {{ shortClusterName }} 
+spec:
+  config:
+    {{ lookup('template', "bmh_nmstate.yaml.j2") | from_yaml }}  
+  interfaces:
+  {% for bond in node_bonds %}
+  {% for nic in bond.interfaces %}
+    - name: "{{ nic.name }}"
+      macAddress: "{% if hostvars[node].virtual|default(False)|bool %}{{ '52:54:00' | community.general.random_mac(seed=node + loop.index0|string) }}{% else %}{{ nic.mac }}{% endif %}"
+  {% endfor %}
+  {% endfor %}

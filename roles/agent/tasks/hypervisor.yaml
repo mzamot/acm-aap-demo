@@ -1,0 +1,19 @@
+---
+- name: Create HostPathProvisioner for local storage
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'hpp_cr.yaml') }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+
+- name: Create StorageClass for local storage
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'storageclass.yaml') }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+
+- name: Create NetworkAttachDefinition
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'net-attach-def.yaml.j2') }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+  loop: "{{ kubevirt_sriov_resource_names }}"
+  loop_control:
+    loop_var: resname
+    index_var: my_idx

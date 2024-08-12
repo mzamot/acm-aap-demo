@@ -1,0 +1,103 @@
+#jinja2: trim_blocks: True, lstrip_blocks: True
+{% set node_bonds = hostvars[node].networkConfig.bonding %}
+{% set node_vlans = hostvars[node].networkConfig.vlans %}
+---
+apiVersion: kubevirt.io/v1alpha3
+kind: VirtualMachine
+metadata:
+  name: {{ node }}
+  namespace: {{ clusterName.split('.', 1)[0] }}
+spec:
+  running: true
+  template:
+    metadata:
+      annotations:
+        cpu-load-balancing.crio.io: disable
+        cpu-quota.crio.io: disable
+        irq-load-balancing.crio.io: disable
+        cpu-freq-governor.crio.io: 'performance'
+      labels: 
+        kubevirt.io/size: large
+        kubevirt.io/domain: {{ clusterName.split('.', 1)[0] }}
+        {% if 'master' in node %}
+        affinity_group_{{ clusterName.split('.', 1)[0] }}: ""
+        {% endif %}
+    spec:
+    {% if 'master' in node %}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: affinity_group_{{ clusterName.split('.', 1)[0] }}
+                operator: Exists
+            topologyKey: kubernetes.io/hostname
+    {% endif %}
+      domain:
+        cpu:
+          cores: {{ vm_settings.cpu.cores }} 
+          sockets: {{ vm_settings.cpu.sockets }}
+          threads: {{ vm_settings.cpu.threads }}
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+            bootOrder: 1
+          - cdrom:
+              bus: sata
+            name: discovery
+            bootOrder: 2
+          interfaces:
+          {% for bond in node_bonds %}
+          {% for nic in bond.interfaces %}
+          - name: "nic-baremetal-{{ loop.index0 }}"
+            macAddress: "{{ '52:54:00' | community.general.random_mac(seed=node + loop.index0|string) }}" 
+            model: virtio
+            sriov: {}
+          {% endfor %}
+          {% endfor %}
+        resources:
+          requests:
+            memory: {{ vm_settings.memory }} 
+      networks:
+      - multus:
+          networkName: {{ clusterName.split('.', 1)[0] }}-0 
+        name: nic-baremetal-0
+      - multus:
+          networkName: {{ clusterName.split('.', 1)[0] }}-1
+        name: nic-baremetal-1
+      volumes:
+      - dataVolume:
+          name: {{ node }}-rootdisk
+        name: rootdisk
+      - dataVolume:
+          name: {{ node }}-discovery
+        name: discovery
+  dataVolumeTemplates:
+  - metadata:
+      name: {{ node }}-rootdisk
+    spec:
+      pvc:
+        storageClassName: {{ vm_settings.disks.storageclass }} 
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ vm_settings.disks.root }}
+      source:
+        blank: {}
+  - metadata:
+      name: {{ node }}-discovery
+    spec:
+      pvc:
+        storageClassName: {{ vm_settings.disks.storageclass }}
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+      source:
+        http:
+          url: "{{ discoveryImage }}"
+          certConfigMap: "tls-certs"

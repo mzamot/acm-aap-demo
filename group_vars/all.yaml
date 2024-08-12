@@ -1,0 +1,37 @@
+---
+shortClusterName: "{{ clusterName.split('.', 1)[0] }}"
+
+# OCP information
+openshiftVersion: "4.14.32"
+openshiftChannel: "eus-4.14"
+
+# Kubevirt cluster settings
+kubevirt_cluster: "kubevirt123.tmpa3gppnetwork.org" 
+kubevirt_sriov_resource_names: ["eth0", "eth1"]
+hub_kubeconfig: hubkubeconfig
+
+# Vault settings
+vault_addr: "{{ lookup('ansible.builtin.env', 'VAULT_ADDR', default=Undefined) }}"
+pullsecret_vault_path: "{{ vault_base_path }}/common/registries"
+openshift_vault_path: "{{ vault_base_path }}/{{ shortClusterName }}/openshift"
+kubeconfig_vault_path: "secret={{ openshift_vault_path }}:kubeconfig"
+acm_hub_kubeconfig_vault_path: "secret={{ vault_base_path }}/{{ acm_clusterName.split('.')[0] }}/openshift:kubeconfig"
+kubevirt_kubeconfig_vault_path: "secret={{ vault_base_path }}/{{ kubevirt_cluster.split('.')[0] }}/openshift:kubeconfig"
+kubevirt_kubeconfig: "{{ playbook_dir + '/kubevirtkubeconfig' if vault_addr is defined else ansible_env.HOME + '/' + clusterName + '/auth/kubevirtkubeconfig' }}"
+timeout: 3600
+managed_cluster_name:
+  - "{{ clusterName.split('.')[0] }}"
+
+certificatesDir: "{{ config }}/certificates" 
+
+vm_settings:
+  cpu:
+    cores: 14
+    sockets: 1
+    threads: 1
+  memory: '64Gi'
+  disks:
+    root: '200Gi'
+    backup: '100Gi'
+    storageclass: 'lvms-vm-vg'
+  topology_spread_constraint_key: 'rack'

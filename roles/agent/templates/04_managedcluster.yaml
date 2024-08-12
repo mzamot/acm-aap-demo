@@ -1,0 +1,13 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    cloud: BareMetal
+    vendor: OpenShift
+    name: {{ clusterName.split('.', 1)[0] }}
+    post-provision: '{{ deploy_post|default("false")|lower }}'
+    cluster.open-cluster-management.io/clusterset: 'default'
+  name: {{ clusterName.split('.', 1)[0] }}
+spec:
+  hubAcceptsClient: true

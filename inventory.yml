@@ -1,0 +1,20 @@
+---
+all:
+  vars:
+    ansible_python_interpreter: "/usr/bin/python3.9"
+  children:
+    devconf1:
+      children:
+        devconf1_masters: 
+          hosts:
+            virtual-master-0.devconf1.tmpa3gppnetwork.org:
+            virtual-master-1.devconf1.tmpa3gppnetwork.org:
+            virtual-master-2.devconf1.tmpa3gppnetwork.org:
+        devconf1_workers:
+          hosts:
+            worker-1.devconf1.tmpa3gppnetwork.org:
+            worker-2.devconf1.tmpa3gppnetwork.org:
+        devconf1_controller:
+          hosts:
+            devconf1_bastion:
+              ansible_connection: "local"

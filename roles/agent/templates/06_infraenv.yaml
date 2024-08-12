@@ -1,0 +1,25 @@
+---
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: {{ clusterName.split('.', 1)[0] }}
+  namespace: {{ clusterName.split('.', 1)[0] }}
+spec:
+  additionalNTPSources:
+  - 96.239.250.57
+  clusterRef:
+    name: {{ clusterName.split('.', 1)[0] }}
+    namespace: {{ clusterName.split('.', 1)[0] }}
+  agentLabels:
+    'agentBareMetal-generated-infraenv-ai-flow': "{{ clusterName.split('.', 1)[0] }}-{{ clusterName.split('.', 1)[0] }}"
+  pullSecretRef:
+    name: pullsecret-cluster-{{ clusterName.split('.', 1)[0] }}
+  nmStateConfigLabelSelector:
+    matchLabels:
+      cluster-name: {{ clusterName.split('.', 1)[0] }}
+  sshAuthorizedKey: '{{ sshKey }}' 
+  cpuArchitecture: x86_64
+status:
+  agentLabelSelector:
+    matchLabels:
+      'agentBareMetal-generated-infraenv-ai-flow': "{{ clusterName.split('.', 1)[0] }}-{{ clusterName.split('.', 1)[0] }}"

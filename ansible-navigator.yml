@@ -1,0 +1,16 @@
+---
+ansible-navigator:
+  mode: stdout
+  ansible:
+    inventory:
+      help: False
+      entries:
+      - inventory
+  execution-environment:
+    environment-variables:
+      pass:
+      - VAULT_ADDR
+      - VAULT_TOKEN
+      - ANSIBLE_PYTHON_INTERPRETER
+    pull:
+      policy: always

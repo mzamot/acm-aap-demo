@@ -1,0 +1,167 @@
+---
+# This is on the ACM Hub Cluster
+- name: Create ClusterDeployment
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '01_clusterdeployment.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create AgentClusterInstall
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '02_agentclusterinstall.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create pull-secret secret
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '03_pull-secret.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create ManagedCluster
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '04_managedcluster.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: KlusterletAddon
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '05_klusterletaddon.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create NMStateConfig
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'nmstateconfig.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+  loop_control:
+    loop_var: node
+  loop: "{{ groups[shortClusterName + '_masters'] + groups[shortClusterName + '_workers'] }}"
+
+- name: Create MachineConfig's ConfigMap
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'machineconfigs.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Create InfraEnv
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '06_infraenv.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+
+- name: Get ingress CA
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: router-certs-default
+    namespace: openshift-ingress
+    kubeconfig: "{{ hub_kubeconfig }}"
+  register: ingressCA
+
+- name: Create tls secret
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', 'tls-certs.yaml.j2') }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+
+- name: Get ISO URL from InfraEnv
+  kubernetes.core.k8s_info:
+    api_version: agent-install.openshift.io/v1beta1
+    kind: InfraEnv
+    name: "{{ shortClusterName }}"
+    namespace: "{{ shortClusterName }}"
+    kubeconfig: '{{ hub_kubeconfig }}'
+  until: infraenv is not failed and infraenv.resources[0].status.isoDownloadURL is defined
+  retries: 60
+  delay: 10
+  register: infraenv
+
+- set_fact:
+    discoveryImage: "{{ infraenv.resources[0].status.isoDownloadURL }}"
+
+- name: Create master VMs
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm_template.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+  when: hostvars[node].virtual|default(False)|bool
+  loop_control:
+    loop_var: node
+  loop: "{{ groups[shortClusterName + '_masters'] }}"
+
+- name: Wait for agents to appear
+  kubernetes.core.k8s_info:
+    api_version: agent-install.openshift.io/v1beta1
+    kind: Agent
+    namespace: "{{ shortClusterName }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+  register: vm_agents
+  until: vm_agents.resources | length >= 3
+  retries: 60
+  delay: 10
+
+- name: Approve agents
+  kubernetes.core.k8s_json_patch:
+    api_version: agent-install.openshift.io/v1beta1
+    kind: Agent
+    namespace: "{{ shortClusterName }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+    name: "{{ item.metadata.name }}"
+    patch:
+      - op: replace
+        path: /spec/approved
+        value: true
+  loop: "{{ vm_agents.resources }}"
+
+- name: Get kubeconfig secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    namespace: "{{ shortClusterName }}"
+    name: "{{ shortClusterName }}-admin-kubeconfig"
+    kubeconfig: "{{ hub_kubeconfig }}"
+  register: vm_kubeconfig
+  until: vm_kubeconfig.resources[0].data.kubeconfig is defined
+  retries: 60
+  delay: 10
+
+- name: Save kubeconfig to file
+  copy:
+    content: "{{ vm_kubeconfig.resources[0].data.kubeconfig | b64decode }}"
+    dest: "{{ shortClusterName }}-kubeconfig"
+  register: save_kubeconfig
+  until: save_kubeconfig is not failed
+  retries: 60
+  delay: 10
+
+- set_fact:
+    hosted_kubeconfig: "{{ shortClusterName }}-kubeconfig"
+
+- name: Write kubeconfig to vault
+  community.hashi_vault.vault_write:
+    path: "{{ vault_base_path }}/{{ shortClusterName }}/openshift"
+    data:
+      data:
+        kubeconfig: "{{ vm_kubeconfig.resources[0].data.kubeconfig | b64decode }}"
+
+- name: Wait for control plane to be up and running
+  kubernetes.core.k8s_info:
+    api: config.openshift.io/v1
+    kind: ClusterVersion
+    kubeconfig: "{{ hosted_kubeconfig }}"
+  register: deployment_status
+  ignore_errors: yes
+  until: "(deployment_status.resources is defined and deployment_status.resources|length > 0) and deployment_status.resources[0].status.conditions | selectattr('type', 'equalto', 'Available') | selectattr('status', 'equalto', 'True') | list"
+  retries: "{{ timeout }}"
+  delay: 60
+
+- name: Create virtual workers
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'vm_template.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ kubevirt_kubeconfig }}"
+  when: hostvars[node].virtual|default(False)|bool
+  loop_control:
+    loop_var: node
+  loop: "{{ groups[shortClusterName + '_workers'] }}"
+
+- name: Add label to ManagedCluster
+  kubernetes.core.k8s:
+    definition: "{{ lookup('template', '04_managedcluster.yaml') }}"
+    kubeconfig: "{{ hub_kubeconfig }}"
+  vars:
+    deploy_post: True

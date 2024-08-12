@@ -1,0 +1,77 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: PolicyGenerator
+metadata:
+  name: policy-generator-devconf-deployment
+policyDefaults:
+  controls:
+    - PR.DS-1 Data-at-rest
+  namespace: policies-devconf-deployment
+  remediationAction: inform
+  severity: medium
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - key: devconf
+          operator: In
+          values:
+            - "true"
+policies:
+- name: devconf-deployment-etcd-encrypt
+  remediationAction: enforce
+  manifests:
+    - path: etcd
+- name: devconf-deployment-nmstate
+  remediationAction: enforce
+  manifests:
+    - path: nmstate
+- name: devconf-deployment-logging
+  remediationAction: enforce
+  manifests:
+    - path: logging
+- name: devconf-deployment-sriov
+  remediationAction: inform
+  manifests:
+    - path: sriov
+- name: devconf-deployment-cnv
+  remediationAction: inform
+  manifests:
+    - path: cnv
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - key: deploy_cnv
+          operator: In
+          values:
+            - "true"
+- name: devconf-deployment-cma
+  remediationAction: inform
+  manifests:
+    - path: cma
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - {key: deploy_cma, operator: In, values: ["true"]}
+- name: devconf-acm-rolebinding
+  remediationAction: enforce
+  manifests:
+    - path: hub
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - {key: name, operator: In, values: ["local-cluster"]}
+- name: devconf-deployment-aap
+  remediationAction: enforce
+  manifests:
+    - path: aap
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - {key: deploy_aap, operator: In, values: ["true"]}
+- name: devconf-post-provision
+  remediationAction: enforce
+  manifests:
+    - path: post-pro
+  placement:
+    clusterSelector:
+      matchExpressions:
+        - {key: post-provision, operator: In, values: ["true"]}
